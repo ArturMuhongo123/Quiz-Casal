@@ -86,10 +86,47 @@ function makeCreateBoxes(role){
   });
 }
 
+// Gerador de opções falsas mais inteligente
+function generateDistractors(answer, question){
+  const distractorMap = {
+    "musica": ["Shape of You","Perfect","Despacito","Havana","Drivers License","Cem Mil","Blinding Lights"],
+    "dorama": ["Itaewon Class","Goblin","Crash Landing on You","Vincenzo","Kingdom","True Beauty"],
+    "anime": ["Naruto","Bleach","Death Note","Attack on Titan","One Piece","Dragon Ball Z","Jujutsu Kaisen"],
+    "data": ["12/02/2020","01/01/2021","14/02/2022","20/07/2023","16/06/2024"],
+    "flor": ["Rosa","Girassol","Tulipa","Margarida","Orquídea","Lírio"],
+    "comida": ["Pizza","Sushi","Hambúrguer","Cachupa","Funge","Batata Frita","Massa"],
+    "animal": ["Cão","Gato","Coelho","Hamster","Pássaro","Peixe"],
+    "cor": ["Vermelho","Azul","Roxo","Verde","Amarelo","Preto","Branco"],
+    "viagem": ["Paris","Maldivas","Nova Iorque","Tóquio","Lisboa","Londres","Dubai"],
+    "bebida": ["Coca-Cola","Água","Sumo de Laranja","Chá Verde","Vinho Tinto","Cerveja","Milkshake"],
+    "serie": ["Friends","Breaking Bad","Stranger Things","Lupin","Game of Thrones","The Witcher"],
+    "filme": ["Titanic","Avatar","Notebook","La La Land","Aladdin","Shrek","Vingadores"],
+    "outros": ["Netflix","Praia","Ler","Dançar","Estudar","Dormir","Correr","Festa"]
+  };
+
+  const q = question.toLowerCase();
+  let pool = distractorMap.outros;
+  if(q.includes("música")) pool = distractorMap.musica;
+  else if(q.includes("dorama")) pool = distractorMap.dorama;
+  else if(q.includes("anime")) pool = distractorMap.anime;
+  else if(q.includes("dia")) pool = distractorMap.data;
+  else if(q.includes("flor")) pool = distractorMap.flor;
+  else if(q.includes("comida")) pool = distractorMap.comida;
+  else if(q.includes("animal")) pool = distractorMap.animal;
+  else if(q.includes("cor")) pool = distractorMap.cor;
+  else if(q.includes("viagem")) pool = distractorMap.viagem;
+  else if(q.includes("bebida")) pool = distractorMap.bebida;
+  else if(q.includes("série")) pool = distractorMap.serie;
+  else if(q.includes("filme")) pool = distractorMap.filme;
+
+  const filtered = pool.filter(x => normalize(x) !== normalize(answer));
+  return shuffle(filtered).slice(0,3);
+}
+
 function makeTakeBoxes(answers, questions){
   const container = $('take-questions'); container.innerHTML='';
   answers.forEach((ans,i)=>{
-    const options = shuffle([ans,...generateDistractors(ans)]);
+    const options = shuffle([ans,...generateDistractors(ans, questions[i])]);
     const div = document.createElement('div');
     div.innerHTML = `<label class='text-sm text-slate-300'>${questions[i]}</label>${options.map(o=>`<button type='button' class='option-btn w-full text-left p-2 rounded bg-slate-900 border border-slate-700 mt-1' data-i='${i}' data-val='${o}'>${o}</button>`).join('')}`;
     container.appendChild(div);
@@ -101,10 +138,6 @@ function makeTakeBoxes(answers, questions){
 }
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function generateDistractors(answer){
-  const pool = ["Pizza","Chocolate","Praia","Netflix","Carro","Sorvete","Kizomba","Bebida","Estudar","Correr"];
-  return shuffle(pool.filter(x=>x!==answer)).slice(0,2);
-}
 
 let currentRole=null, currentProfile=null;
 $('iam-ivanilda').onclick=()=>{currentRole='ivanilda';show('create');makeCreateBoxes(currentRole)}
