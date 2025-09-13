@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quiz do Casal — Ivanilda & Arthur</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-b from-slate-900 to-slate-950 min-h-screen text-white flex items-center justify-center p-4">
+  <div class="max-w-3xl w-full">
+    <header class="text-center mb-6">
+      <h1 class="text-3xl font-bold mb-2">Quiz do Casal 💜</h1>
+      <p class="text-slate-400">Ivanilda & Arthur — descubram o quanto se conhecem.</p>
+    </header>
+
+    <div id="start" class="bg-slate-800/60 backdrop-blur rounded-2xl p-6 shadow-xl space-y-4">
+      <p class="text-slate-300 text-sm">Escolham quem está a abrir o site. Cada um cria seu perfil com respostas para perguntas únicas. O outro abre o link e tenta adivinhar. No final, aparece a pontuação.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <button class="btn-primary" id="iam-ivanilda">Sou a Ivanilda</button>
+        <button class="btn-primary" id="iam-arthur">Sou o Arthur</button>
+      </div>
+      <button class="btn-secondary w-full mt-3" id="open-link">Abrir link do parceiro</button>
+    </div>
+
+    <div id="create" class="hidden bg-slate-800/60 backdrop-blur rounded-2xl p-6 shadow-xl space-y-4">
+      <h3 class="text-xl font-semibold" id="create-title">Criar perfil</h3>
+      <p class="text-slate-300 text-sm">Preencha as respostas para as perguntas abaixo. Elas serão usadas para o quiz.</p>
+      <div class="grid md:grid-cols-2 gap-3" id="create-questions"></div>
+      <div class="flex flex-wrap gap-3">
+        <button class="btn-primary" id="save-profile">Salvar e gerar link</button>
+        <button class="btn-secondary" id="back-from-create">Voltar</button>
+      </div>
+      <div class="hidden" id="link-panel">
+        <p class="text-sm text-slate-400">Link criado — copie e envie ao parceiro:</p>
+        <div class="flex gap-2 items-center">
+          <input type="text" id="share-link" readonly class="flex-1 p-2 rounded bg-slate-900 border border-slate-700" />
+          <button class="btn-primary" id="copy-link">Copiar</button>
+        </div>
+        <p id="copied-msg" class="text-green-400 text-sm hidden">✅ Link copiado para a área de transferência</p>
+      </div>
+    </div>
+
+    <div id="take" class="hidden bg-slate-800/60 backdrop-blur rounded-2xl p-6 shadow-xl space-y-4">
+      <h3 class="text-xl font-semibold" id="take-title">Responder quiz</h3>
+      <p class="text-slate-300 text-sm" id="take-desc"></p>
+      <div class="grid md:grid-cols-2 gap-3" id="take-questions"></div>
+      <div class="flex flex-wrap gap-3">
+        <button class="btn-primary" id="submit-answers">Enviar respostas</button>
+        <button class="btn-secondary" id="back-from-take">Voltar</button>
+      </div>
+      <div id="result-panel" class="hidden">
+        <p class="text-lg font-bold">Pontuação: <span class="text-violet-400" id="score-val">0</span>/100</p>
+        <div id="detailed" class="text-sm text-slate-300"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const questionsIvanilda = [
+  "Nossa música juntos?","Dorama favorito","Anime favorito","Dia que começamos a namorar?",
+  "Flores favoritas","Cantor favorito","Frase favorita","Animal favorito",
+  "Cor que mais gosta de vestir","Viagem dos sonhos","Comida preferida","Lugar onde gostaria de morar",
+  "Melhor memória comigo","Doce favorito","Série preferida","Algo que te faz sorrir",
+  "Filme romântico favorito","Estilo de roupa favorito","Bebida preferida","Uma palavra que define nosso amor"
+];
+
+const questionsArthur = [
+  "Música que mais gosta de ouvir","Jogo preferido","Cor favorita","Dia mais feliz comigo",
+  "Comida preferida","Hobby favorito","Animal de estimação dos sonhos","Filme favorito",
+  "Série que mais assiste","Lema de vida","Viagem que quer fazer","Doces favoritos",
+  "Lugar preferido para sair","Estilo musical favorito","Time ou ídolo favorito","Algo que sempre fala",
+  "Comida que não gosta","Meta para o futuro","Um medo secreto","Uma palavra que define nosso relacionamento"
+];
+
+function $(id){return document.getElementById(id)}
+function show(id){document.querySelectorAll('#start,#create,#take').forEach(el=>el.classList.add('hidden'));$(id).classList.remove('hidden')}
+function normalize(s){return (s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').trim().toLowerCase()}
+
+function makeCreateBoxes(role){
+  const container = $('create-questions'); container.innerHTML='';
+  const questions = role === 'ivanilda' ? questionsIvanilda : questionsArthur;
+  questions.forEach((q,i)=>{
+    const div = document.createElement('div');
+    div.innerHTML = `<label class='text-sm text-slate-300'>${q}</label><input type='text' placeholder='Digite sua resposta...' class='w-full p-2 rounded bg-slate-900 border border-slate-700' data-i='${i}' />`;
+    container.appendChild(div);
+  });
+}
+
+function makeTakeBoxes(answers, questions){
+  const container = $('take-questions'); container.innerHTML='';
+  answers.forEach((ans,i)=>{
+    const options = shuffle([ans,...generateDistractors(ans)]);
+    const div = document.createElement('div');
+    div.innerHTML = `<label class='text-sm text-slate-300'>${questions[i]}</label>${options.map(o=>`<button type='button' class='option-btn w-full text-left p-2 rounded bg-slate-900 border border-slate-700 mt-1' data-i='${i}' data-val='${o}'>${o}</button>`).join('')}`;
+    container.appendChild(div);
+  });
+  document.querySelectorAll('.option-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll(`.option-btn[data-i='${btn.dataset.i}']`).forEach(b=>b.classList.remove('bg-violet-600'));
+    btn.classList.add('bg-violet-600');
+  }));
+}
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function generateDistractors(answer){
+  const pool = ["Pizza","Chocolate","Praia","Netflix","Carro","Sorvete","Kizomba","Bebida","Estudar","Correr"];
+  return shuffle(pool.filter(x=>x!==answer)).slice(0,2);
+}
+
+let currentRole=null, currentProfile=null;
+$('iam-ivanilda').onclick=()=>{currentRole='ivanilda';show('create');makeCreateBoxes(currentRole)}
+$('iam-arthur').onclick=()=>{currentRole='arthur';show('create');makeCreateBoxes(currentRole)}
+$('back-from-create').onclick=()=>show('start')
+$('back-from-take').onclick=()=>show('start')
+
+$('save-profile').onclick=()=>{
+  const answers = Array.from(document.querySelectorAll('#create-questions input')).map(i=>i.value||'');
+  if(answers.some(a => !a.trim())) return alert('Responda todas as perguntas antes de salvar.');
+  const payload={role:currentRole,answers};
+  const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  $('share-link').value=location.origin+location.pathname+'#'+encoded;
+  $('link-panel').classList.remove('hidden');
+}
+
+$('copy-link').onclick=()=>{
+  navigator.clipboard.writeText($('share-link').value).then(()=>{
+    $('copied-msg').classList.remove('hidden');
+    setTimeout(()=>$('copied-msg').classList.add('hidden'),2000);
+  });
+}
+
+$('open-link').onclick=()=>{
+  const raw=prompt('Cole o link do perfil:');if(!raw)return;
+  try{const u=new URL(raw);if(u.hash){handleProfileFromHash(u.hash.slice(1))}}catch{alert('Link inválido')}
+}
+
+function handleProfileFromHash(hash){
+  try{
+    const payload=JSON.parse(decodeURIComponent(escape(atob(hash))));
+    currentProfile=payload;
+    const questions = payload.role==='ivanilda'?questionsIvanilda:questionsArthur;
+    show('take'); makeTakeBoxes(payload.answers,questions);
+  }catch{alert('Link inválido ou corrompido')}
+}
+
+$('submit-answers').onclick=()=>{
+  const selected=Array.from(document.querySelectorAll('.option-btn.bg-violet-600'));
+  if(selected.length<currentProfile.answers.length) return alert('Responda todas as perguntas');
+  let correct=0;
+  selected.forEach(btn=>{
+    const i=btn.dataset.i;
+    if(normalize(btn.dataset.val)===normalize(currentProfile.answers[i])) correct++;
+  });
+  const score=Math.round((correct/currentProfile.answers.length)*100);
+  $('score-val').textContent=score;
+  $('result-panel').classList.remove('hidden');
+  $('detailed').innerHTML=`${correct} de ${currentProfile.answers.length} corretas.`;
+}
+</script>
+
+<style>
+.btn-primary{background:#7c3aed;padding:.75rem 1rem;border-radius:.75rem;text-align:center;font-weight:600}
+.btn-primary:hover{background:#6d28d9}
+.btn-secondary{background:transparent;border:1px solid #4b5563;padding:.75rem 1rem;border-radius:.75rem;text-align:center;font-weight:600}
+.btn-secondary:hover{background:#1f2937}
+</style>
+</body>
+</html>
