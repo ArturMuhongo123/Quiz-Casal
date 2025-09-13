@@ -19,6 +19,7 @@
         <button class="btn-primary" id="iam-ivanilda">Sou a Ivanilda</button>
         <button class="btn-primary" id="iam-arthur">Sou o Arthur</button>
       </div>
+      <button class="btn-secondary w-full mt-3" id="open-link">Abrir link do parceiro</button>
     </div>
 
     <div id="create" class="hidden bg-slate-800/60 backdrop-blur rounded-2xl p-6 shadow-xl space-y-4">
@@ -35,6 +36,7 @@
           <input type="text" id="share-link" readonly class="flex-1 p-2 rounded bg-slate-900 border border-slate-700" />
           <button class="btn-primary" id="copy-link">Copiar</button>
         </div>
+        <p id="copied-msg" class="text-green-400 text-sm hidden">✅ Link copiado para a área de transferência</p>
       </div>
     </div>
 
@@ -74,53 +76,12 @@ function $(id){return document.getElementById(id)}
 function show(id){document.querySelectorAll('#start,#create,#take').forEach(el=>el.classList.add('hidden'));$(id).classList.remove('hidden')}
 function normalize(s){return (s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').trim().toLowerCase()}
 
-// Distratores por categoria
-const distractorCategories = {
-  musica: ["Shape of You","Perfect","Despacito","Havana","Drivers License","Cem Mil","Blinding Lights"],
-  dorama: ["Itaewon Class","Goblin","Crash Landing on You","Vincenzo","Kingdom","True Beauty"],
-  anime: ["Naruto","Bleach","Death Note","Attack on Titan","One Piece","Dragon Ball Z","Jujutsu Kaisen"],
-  data: ["12/02/2020","01/01/2021","14/02/2022","20/07/2023","16/06/2024"],
-  flor: ["Rosa","Girassol","Tulipa","Margarida","Orquídea","Lírio"],
-  comida: ["Pizza","Sushi","Hambúrguer","Cachupa","Funge","Batata Frita","Massa"],
-  animal: ["Cão","Gato","Coelho","Hamster","Pássaro","Peixe"],
-  cor: ["Vermelho","Azul","Roxo","Verde","Amarelo","Preto","Branco"],
-  viagem: ["Paris","Maldivas","Nova Iorque","Tóquio","Lisboa","Londres","Dubai"],
-  bebida: ["Coca-Cola","Água","Sumo de Laranja","Chá Verde","Vinho Tinto","Cerveja","Milkshake"],
-  serie: ["Friends","Breaking Bad","Stranger Things","Lupin","Game of Thrones","The Witcher"],
-  filme: ["Titanic","Avatar","Notebook","La La Land","Aladdin","Shrek","Vingadores"],
-  generico: ["Netflix","Praia","Ler","Dançar","Estudar","Dormir","Correr","Festa"]
-};
-
-function detectCategory(question){
-  const q = question.toLowerCase();
-  if(q.includes("música")) return "musica";
-  if(q.includes("dorama")) return "dorama";
-  if(q.includes("anime")) return "anime";
-  if(q.includes("dia")) return "data";
-  if(q.includes("flor")) return "flor";
-  if(q.includes("comida")) return "comida";
-  if(q.includes("animal")) return "animal";
-  if(q.includes("cor")) return "cor";
-  if(q.includes("viagem")) return "viagem";
-  if(q.includes("bebida")) return "bebida";
-  if(q.includes("série")) return "serie";
-  if(q.includes("filme")) return "filme";
-  return "generico";
-}
-
-function generateDistractors(answer, question){
-  const category = detectCategory(question);
-  const pool = distractorCategories[category] || distractorCategories.generico;
-  const filtered = pool.filter(x => normalize(x) !== normalize(answer));
-  return shuffle(filtered).slice(0,3);
-}
-
 function makeCreateBoxes(role){
   const container = $('create-questions'); container.innerHTML='';
   const questions = role === 'ivanilda' ? questionsIvanilda : questionsArthur;
   questions.forEach((q,i)=>{
     const div = document.createElement('div');
-    div.innerHTML = `<label class='text-sm text-slate-300'>${q}</label><input type='text' class='w-full p-2 rounded bg-slate-900 border border-slate-700' data-i='${i}' />`;
+    div.innerHTML = `<label class='text-sm text-slate-300'>${q}</label><input type='text' placeholder='Digite sua resposta...' class='w-full p-2 rounded bg-slate-900 border border-slate-700' data-i='${i}' />`;
     container.appendChild(div);
   });
 }
@@ -128,7 +89,7 @@ function makeCreateBoxes(role){
 function makeTakeBoxes(answers, questions){
   const container = $('take-questions'); container.innerHTML='';
   answers.forEach((ans,i)=>{
-    const options = shuffle([ans,...generateDistractors(ans, questions[i])]);
+    const options = shuffle([ans,...generateDistractors(ans)]);
     const div = document.createElement('div');
     div.innerHTML = `<label class='text-sm text-slate-300'>${questions[i]}</label>${options.map(o=>`<button type='button' class='option-btn w-full text-left p-2 rounded bg-slate-900 border border-slate-700 mt-1' data-i='${i}' data-val='${o}'>${o}</button>`).join('')}`;
     container.appendChild(div);
@@ -140,6 +101,10 @@ function makeTakeBoxes(answers, questions){
 }
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function generateDistractors(answer){
+  const pool = ["Pizza","Chocolate","Praia","Netflix","Carro","Sorvete","Kizomba","Bebida","Estudar","Correr"];
+  return shuffle(pool.filter(x=>x!==answer)).slice(0,2);
+}
 
 let currentRole=null, currentProfile=null;
 $('iam-ivanilda').onclick=()=>{currentRole='ivanilda';show('create');makeCreateBoxes(currentRole)}
@@ -149,13 +114,24 @@ $('back-from-take').onclick=()=>show('start')
 
 $('save-profile').onclick=()=>{
   const answers = Array.from(document.querySelectorAll('#create-questions input')).map(i=>i.value||'');
+  if(answers.some(a => !a.trim())) return alert('Responda todas as perguntas antes de salvar.');
   const payload={role:currentRole,answers};
   const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   $('share-link').value=location.origin+location.pathname+'#'+encoded;
   $('link-panel').classList.remove('hidden');
 }
 
-$('copy-link').onclick=()=>{$('share-link').select();document.execCommand('copy')}
+$('copy-link').onclick=()=>{
+  navigator.clipboard.writeText($('share-link').value).then(()=>{
+    $('copied-msg').classList.remove('hidden');
+    setTimeout(()=>$('copied-msg').classList.add('hidden'),2000);
+  });
+}
+
+$('open-link').onclick=()=>{
+  const raw=prompt('Cole o link do perfil:');if(!raw)return;
+  try{const u=new URL(raw);if(u.hash){handleProfileFromHash(u.hash.slice(1))}}catch{alert('Link inválido')}
+}
 
 function handleProfileFromHash(hash){
   try{
@@ -165,8 +141,6 @@ function handleProfileFromHash(hash){
     show('take'); makeTakeBoxes(payload.answers,questions);
   }catch{alert('Link inválido ou corrompido')}
 }
-
-if(location.hash){handleProfileFromHash(location.hash.slice(1))}
 
 $('submit-answers').onclick=()=>{
   const selected=Array.from(document.querySelectorAll('.option-btn.bg-violet-600'));
@@ -185,7 +159,9 @@ $('submit-answers').onclick=()=>{
 
 <style>
 .btn-primary{background:#7c3aed;padding:.75rem 1rem;border-radius:.75rem;text-align:center;font-weight:600}
+.btn-primary:hover{background:#6d28d9}
 .btn-secondary{background:transparent;border:1px solid #4b5563;padding:.75rem 1rem;border-radius:.75rem;text-align:center;font-weight:600}
+.btn-secondary:hover{background:#1f2937}
 </style>
 </body>
 </html>
